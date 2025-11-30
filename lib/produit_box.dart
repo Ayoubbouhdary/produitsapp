@@ -1,22 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'model/produit.dart';
+import 'package:hive/hive.dart';
+import 'models/produit.dart';
 
 class ProduitBox extends StatelessWidget {
   final Produit produit;
-  final bool selProduit;
-  final Function(bool?) onChanged;
-  final Function() delProduit;
-  final Function() onTap;
+  final int index;
+  final VoidCallback onTap;
 
   const ProduitBox({
     super.key,
     required this.produit,
-    required this.selProduit,
-    required this.onChanged,
-    required this.delProduit,
+    required this.index,
     required this.onTap,
   });
+
+  Future<void> _deleteProduit(BuildContext context) async {
+    final box = Hive.box<Produit>('produits');
+    await box.deleteAt(index);
+    
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${produit.libelle} supprimé')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +35,7 @@ class ProduitBox extends StatelessWidget {
           motion: const ScrollMotion(),
           children: [
             SlidableAction(
-              onPressed: (context) => delProduit(),
+              onPressed: (context) => _deleteProduit(context),
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
               icon: Icons.delete,
@@ -54,10 +62,7 @@ class ProduitBox extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Checkbox(
-                  value: selProduit,
-                  onChanged: onChanged,
-                ),
+                const SizedBox(width: 12),
                 // Image du produit
                 Container(
                   width: 70,

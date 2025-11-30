@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'model/produit.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/produit.dart';
 
 class AddProduitForm extends StatefulWidget {
-  final Function(Produit) onSave;
+  final Produit? produit;
 
-  const AddProduitForm({super.key, required this.onSave});
+  const AddProduitForm({super.key, this.produit});
 
   @override
   State<AddProduitForm> createState() => _AddProduitFormState();
@@ -12,15 +13,57 @@ class AddProduitForm extends StatefulWidget {
 
 class _AddProduitFormState extends State<AddProduitForm> {
   final _formKey = GlobalKey<FormState>();
-  final Produit _produit = Produit.empty();
-  final TextEditingController _imageUrlController = TextEditingController();
+  late TextEditingController _libelleController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _prixController;
+  late TextEditingController _imageUrlController;
 
-  void _saveProduit() {
+  @override
+  void initState() {
+    super.initState();
+    _libelleController = TextEditingController(text: widget.produit?.libelle ?? '');
+    _descriptionController = TextEditingController(text: widget.produit?.description ?? '');
+    _prixController = TextEditingController(text: widget.produit?.prix.toString() ?? '');
+    _imageUrlController = TextEditingController(text: widget.produit?.photo ?? '');
+  }
+
+  Future<void> _saveProduit() async {
     if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      _produit.photo = _imageUrlController.text;
-      widget.onSave(_produit);
-      Navigator.of(context).pop();
+      final box = Hive.box<Produit>('produits');
+      
+      if (widget.produit != null) {
+        // Update existing product
+        widget.produit!.libelle = _libelleController.text;
+        widget.produit!.description = _descriptionController.text;
+        widget.produit!.prix = double.parse(_prixController.text);
+        widget.produit!.photo = _imageUrlController.text;
+        await widget.produit!.save();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Produit modifié avec succès')),
+          );
+        }
+      } else {
+        // Add new product
+        final produit = Produit(
+          libelle: _libelleController.text,
+          description: _descriptionController.text,
+          prix: double.parse(_prixController.text),
+          photo: _imageUrlController.text,
+        );
+        await box.add(produit);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Produit ajouté avec succès')),
+          );
+        }
+      }
+      
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     }
   }
 
@@ -28,9 +71,9 @@ class _AddProduitFormState extends State<AddProduitForm> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Ajouter un produit',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          widget.produit != null ? 'Modifier le produit' : 'Ajouter un produit',
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.blue,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -41,8 +84,8 @@ class _AddProduitFormState extends State<AddProduitForm> {
           key: _formKey,
           child: ListView(
             children: [
-              // Champ Libellé
               TextFormField(
+                controller: _libelleController,
                 decoration: const InputDecoration(
                   labelText: 'Libellé',
                   border: OutlineInputBorder(),
@@ -54,14 +97,11 @@ class _AddProduitFormState extends State<AddProduitForm> {
                   }
                   return null;
                 },
-                onSaved: (value) {
-                  _produit.libelle = value!;
-                },
               ),
               const SizedBox(height: 16),
 
-              // Champ Description
               TextFormField(
+                controller: _descriptionController,
                 decoration: const InputDecoration(
                   labelText: 'Description',
                   border: OutlineInputBorder(),
@@ -74,14 +114,11 @@ class _AddProduitFormState extends State<AddProduitForm> {
                   }
                   return null;
                 },
-                onSaved: (value) {
-                  _produit.description = value!;
-                },
               ),
               const SizedBox(height: 16),
 
-              // Champ Prix
               TextFormField(
+                controller: _prixController,
                 decoration: const InputDecoration(
                   labelText: 'Prix',
                   border: OutlineInputBorder(),
@@ -98,13 +135,9 @@ class _AddProduitFormState extends State<AddProduitForm> {
                   }
                   return null;
                 },
-                onSaved: (value) {
-                  _produit.prix = double.parse(value!);
-                },
               ),
               const SizedBox(height: 16),
 
-              // URL de l'image
               TextFormField(
                 controller: _imageUrlController,
                 decoration: const InputDecoration(
@@ -120,12 +153,11 @@ class _AddProduitFormState extends State<AddProduitForm> {
                   return null;
                 },
                 onChanged: (value) {
-                  setState(() {}); // Refresh pour l'aperçu
+                  setState(() {});
                 },
               ),
               const SizedBox(height: 16),
 
-              // Aperçu de l'image
               if (_imageUrlController.text.isNotEmpty)
                 Container(
                   height: 200,
@@ -168,7 +200,6 @@ class _AddProduitFormState extends State<AddProduitForm> {
                 ),
               const SizedBox(height: 24),
 
-              // Exemples d'URLs
               Text(
                 'Exemples d\'URLs :',
                 style: TextStyle(
@@ -188,7 +219,6 @@ class _AddProduitFormState extends State<AddProduitForm> {
               ),
               const SizedBox(height: 24),
 
-              // Bouton Enregistrer
               ElevatedButton(
                 onPressed: _saveProduit,
                 style: ElevatedButton.styleFrom(
@@ -209,6 +239,9 @@ class _AddProduitFormState extends State<AddProduitForm> {
 
   @override
   void dispose() {
+    _libelleController.dispose();
+    _descriptionController.dispose();
+    _prixController.dispose();
     _imageUrlController.dispose();
     super.dispose();
   }

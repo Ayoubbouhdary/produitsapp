@@ -1,10 +1,54 @@
 import 'package:flutter/material.dart';
-import 'model/produit.dart';
+import 'models/produit.dart';
+import 'add_produit_form.dart';
 
 class ProduitDetails extends StatelessWidget {
   final Produit produit;
 
-  const ProduitDetails({super.key, required this.produit});
+  const ProduitDetails({
+    super.key,
+    required this.produit,
+  });
+
+  Future<void> _deleteProduit(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmer la suppression'),
+        content: Text('Voulez-vous vraiment supprimer "${produit.libelle}" ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      await produit.delete();
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Produit supprimé')),
+        );
+      }
+    }
+  }
+
+  void _editProduit(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddProduitForm(produit: produit),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +60,16 @@ class ProduitDetails extends StatelessWidget {
         ),
         backgroundColor: Colors.blue,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () => _editProduit(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: () => _deleteProduit(context),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
