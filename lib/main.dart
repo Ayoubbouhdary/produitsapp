@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/produit.dart';
 import 'produits_list.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await Hive.initFlutter();
+  Hive.registerAdapter(ProduitAdapter());
+  await Hive.openBox<Produit>('produits');
+  
   runApp(const MainApp());
 }
 

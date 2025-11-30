@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/produit.dart';
+import 'produit_details.dart';
+import 'add_produit_form.dart';
 import 'produit_box.dart';
-import 'add_produit.dart';
 
 class ProduitsList extends StatefulWidget {
   const ProduitsList({super.key});
@@ -10,85 +13,75 @@ class ProduitsList extends StatefulWidget {
 }
 
 class _ProduitsListState extends State<ProduitsList> {
-  List<String> produits = ["Laptop", "Téléphone", "Tablet", "Montre"];
-  List<bool> selected = [false, false, false, false];
-  final TextEditingController _controller = TextEditingController();
+  late Box<Produit> produitsBox;
 
-  void changeSelection(bool? value, int index) {
-    setState(() {
-      selected[index] = value ?? false;
-    });
+  @override
+  void initState() {
+    super.initState();
+    produitsBox = Hive.box<Produit>('produits');
   }
 
-  void addProduit() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AddProduit(controller: _controller);
-      },
-    ).then((_) {
-      if (_controller.text.isNotEmpty) {
-        setState(() {
-          produits.add(_controller.text);
-          selected.add(false);
-          _controller.clear();
-        });
-      }
-    });
-  }
-
-  void delProduit(int index) {
-    setState(() {
-      produits.removeAt(index);
-      selected.removeAt(index);
-    });
-  }
-
-  void deleteSelected() {
-    setState(() {
-      for (int i = produits.length - 1; i >= 0; i--) {
-        if (selected[i]) {
-          produits.removeAt(i);
-          selected.removeAt(i);
-        }
-      }
-    });
+  void showProduitDetails(Produit produit) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProduitDetails(produit: produit),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Liste des produits"),
+        title: const Text(
+          'Liste des produits',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.blue,
       ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            onPressed: addProduit,
-            child: Icon(Icons.add),
-            heroTag: "add",
-          ),
-          SizedBox(height: 10),
-          FloatingActionButton(
-            onPressed: deleteSelected,
-            child: Icon(Icons.delete_sweep),
-            backgroundColor: Colors.red,
-            heroTag: "delete",
-          ),
-        ],
-      ),
-      body: ListView.builder(
-        itemCount: produits.length,
-        itemBuilder: (context, index) {
-          return ProduitBox(
-            nomProduit: produits[index],
-            selProduit: selected[index],
-            onChanged: (value) => changeSelection(value, index),
-            delProduit: () => delProduit(index),
+      body: ValueListenableBuilder(
+        valueListenable: produitsBox.listenable(),
+        builder: (context, Box<Produit> box, _) {
+          if (box.isEmpty) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'Aucun produit',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: box.length,
+            itemBuilder: (context, index) {
+              final produit = box.getAt(index)!;
+              return ProduitBox(
+                produit: produit,
+                index: index,
+                onTap: () => showProduitDetails(produit),
+              );
+            },
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AddProduitForm(),
+            ),
+          );
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }
